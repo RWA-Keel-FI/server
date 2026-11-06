@@ -1,3 +1,7 @@
 .env
 node_modules/
 *.log
+out.wasm
+binary.wasm
+out.js
+binary.wasm.br.b64

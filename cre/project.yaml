@@ -1,12 +1,25 @@
 # Shared settings. Target names must match deviation-workflow/workflow.yaml.
-# Chain name verified in CRE Forwarder Directory: ethereum-testnet-sepolia-unichain-1 (needs CLI >= 1.5.0, TS SDK >= 1.3.0).
-# RPC URL: public Unichain Sepolia endpoint (eth_chainId returned 0x515 = 1301); swap for a dedicated RPC via ${VAR}.
+# Chain name verified against docs.chain.link/cre/supported-networks-ts and the Forwarder Directory:
+#   arc-testnet (needs CLI >= 1.0.7, TS SDK >= 1.3.1). Public RPC checked: eth_chainId = 5042002.
+# Forwarders on arc-testnet:
+#   simulation (MockKeystoneForwarder): 0x6E9EE680ef59ef64Aa8C7371279c27E496b5eDc1  (only for `cre workflow simulate --broadcast`)
+#   production (KeystoneForwarder):     0x76c9cf548b4179F8901cda1f8623568b58215E62  (for deployed workflows)
+
+# `cre workflow simulate` against real Arc Testnet.
 staging-settings:
   rpcs:
-    - chain-name: ethereum-testnet-sepolia-unichain-1
-      url: https://sepolia.unichain.org
+    - chain-name: arc-testnet
+      url: https://rpc.testnet.arc.network
 
-demo-settings:
+# `cre workflow deploy` (the DON writes through the production KeystoneForwarder).
+production-settings:
   rpcs:
-    - chain-name: ethereum-testnet-sepolia-unichain-1
-      url: https://sepolia.unichain.org
+    - chain-name: arc-testnet
+      url: https://rpc.testnet.arc.network
+
+# Dry run against a local anvil fork of Arc Testnet (anvil --fork-url https://rpc.testnet.arc.network).
+# The chain name stays arc-testnet (the CRE simulator needs a known chain selector); only the RPC differs.
+fork-settings:
+  rpcs:
+    - chain-name: arc-testnet
+      url: http://127.0.0.1:8545

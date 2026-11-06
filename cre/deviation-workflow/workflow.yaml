@@ -1,4 +1,5 @@
 # Targets must also exist in ../project.yaml (CLI merges both; workflow.yaml wins on conflicts).
+# All three targets use the same code; only receiver/RPC differ (see scripts/set-receiver.ts).
 staging-settings:
   user-workflow:
     workflow-name: "deviationfee-refprice-staging"
@@ -7,11 +8,21 @@ staging-settings:
     config-path: "./config.staging.json"
     secrets-path: "../secrets.yaml"
 
-# DEMO ONLY: replays fixtures/*.json served on 127.0.0.1:8787 with the session forced open.
-demo-settings:
+production-settings:
   user-workflow:
-    workflow-name: "deviationfee-refprice-demo"
+    workflow-name: "deviationfee-refprice"
+    # Optional (CLI >= 1.14): "private" = Chainlink-hosted registry, no wallet/gas needed for registry ops.
+    # Omit for the default onchain registry (needs a linked key + Ethereum Mainnet gas). Run `cre registry list`.
+    # deployment-registry: "private"
   workflow-artifacts:
     workflow-path: "./main.ts"
-    config-path: "./config.demo.json"
+    config-path: "./config.production.json"
+    secrets-path: "../secrets.yaml"
+
+fork-settings:
+  user-workflow:
+    workflow-name: "deviationfee-refprice-fork"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.fork.json"
     secrets-path: "../secrets.yaml"

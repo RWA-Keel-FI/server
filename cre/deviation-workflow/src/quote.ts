@@ -10,18 +10,19 @@ export interface Quote {
 }
 
 /**
- * `template` (demo/fixture replay) replaces the provider URL; "{ticker}" is substituted.
- * The response must still be in the configured provider's JSON format.
+ * Candidate URLs for one provider, in the order a node should try them.
+ * Yahoo has two public hosts serving the same v8 chart API; the second is a same-provider failover.
+ * Finnhub needs an API key (CRE secret).
  */
-export function buildQuoteUrl(provider: Provider, ticker: string, apiKey?: string, template?: string): string {
+export function buildQuoteUrls(provider: Provider, ticker: string, apiKey?: string): string[] {
   if (!/^[A-Z0-9.\-]{1,12}$/.test(ticker)) throw new Error(`bad ticker: ${ticker}`);
-  if (template) return template.split("{ticker}").join(ticker);
   if (provider === "yahoo") {
     // interval=1m + includePrePost gives pre/post bars; last non-null bar close is the live price.
-    return `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1m&range=1d&includePrePost=true`;
+    const path = `/v8/finance/chart/${ticker}?interval=1m&range=1d&includePrePost=true`;
+    return [`https://query1.finance.yahoo.com${path}`, `https://query2.finance.yahoo.com${path}`];
   }
   if (!apiKey) throw new Error("finnhub requires an API key");
-  return `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${encodeURIComponent(apiKey)}`;
+  return [`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${encodeURIComponent(apiKey)}`];
 }
 
 /** Yahoo v8 chart. Uses the last non-null 1m bar (works in pre/post), falling back to meta. */

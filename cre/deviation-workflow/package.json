@@ -7,7 +7,8 @@
     "postinstall": "bunx cre-setup",
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
-    "compile": "cre-compile main.ts out.wasm"
+    "compile": "cre-compile main.ts out.wasm",
+    "set-receiver": "bun scripts/set-receiver.ts"
   },
   "dependencies": {
     "@chainlink/cre-sdk": "^1.3.0"

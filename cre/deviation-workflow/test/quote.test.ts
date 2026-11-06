@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseYahooChart, parseFinnhubQuote, buildQuoteUrl, assertFresh } from "../src/quote.ts";
+import { parseYahooChart, parseFinnhubQuote, buildQuoteUrls, assertFresh } from "../src/quote.ts";
 import { validateConfig } from "../src/config.ts";
 import { readFileSync } from "node:fs";
 
@@ -24,10 +24,13 @@ test("finnhub: parses c/t, rejects zeros (unknown symbol returns zeros)", () => 
 });
 
 test("url building + ticker validation", () => {
-  assert.match(buildQuoteUrl("yahoo", "NVDA"), /v8\/finance\/chart\/NVDA\?interval=1m/);
-  assert.match(buildQuoteUrl("finnhub", "NVDA", "k e y"), /token=k%20e%20y$/);
-  assert.throws(() => buildQuoteUrl("finnhub", "NVDA"));
-  assert.throws(() => buildQuoteUrl("yahoo", "NVDA/../x"));
+  const y = buildQuoteUrls("yahoo", "TSLA");
+  assert.equal(y.length, 2); // query1 then query2 failover
+  assert.match(y[0], /^https:\/\/query1\.finance\.yahoo\.com\/v8\/finance\/chart\/TSLA\?interval=1m/);
+  assert.match(y[1], /^https:\/\/query2\./);
+  assert.match(buildQuoteUrls("finnhub", "TSLA", "k e y")[0], /token=k%20e%20y$/);
+  assert.throws(() => buildQuoteUrls("finnhub", "TSLA"));
+  assert.throws(() => buildQuoteUrls("yahoo", "TSLA/../x"));
 });
 
 test("freshness guard", () => {
@@ -36,25 +39,29 @@ test("freshness guard", () => {
   assert.throws(() => assertFresh({ price: 1, quoteTimeSec: 2000 }, 1000, 120), /future/);
 });
 
-test("shipped config.staging.json validates", () => {
-  const cfg = JSON.parse(readFileSync(new URL("../config.staging.json", import.meta.url), "utf8"));
-  assert.doesNotThrow(() => validateConfig(cfg));
-  assert.throws(() => validateConfig({ ...cfg, receiver: "0x123" }));
-  assert.throws(() => validateConfig({ ...cfg, feeds: [] }));
-  assert.throws(() => validateConfig({ ...cfg, provider: "bloomberg" }));
-});
+const ZERO = "0x0000000000000000000000000000000000000000";
+const shipped = (n: string) => JSON.parse(readFileSync(new URL(`../config.${n}.json`, import.meta.url), "utf8"));
 
-test("demo template replaces provider url; demo config validates", () => {
-  assert.equal(buildQuoteUrl("yahoo", "NVDA", undefined, "http://127.0.0.1:8787/{ticker}.json"), "http://127.0.0.1:8787/NVDA.json");
-  const demo = JSON.parse(readFileSync(new URL("../config.demo.json", import.meta.url), "utf8"));
-  assert.doesNotThrow(() => validateConfig(demo));
-  assert.throws(() => validateConfig({ ...demo, quoteUrlTemplate: "http://x/no-placeholder" }));
-  assert.throws(() => validateConfig({ ...demo, forceSessionOpen: "yes" }));
-});
-
-test("fixtures parse with the yahoo parser", () => {
-  for (const [t, p] of [["NVDA", 188.26], ["TSLA", 420.69]] as const) {
-    const q = parseYahooChart(readFileSync(new URL(`../fixtures/${t}.json`, import.meta.url), "utf8"));
-    assert.equal(q.price, p);
+test("shipped configs: arc-testnet, TSLA only, real providers only, receiver unset until set-receiver runs", () => {
+  for (const n of ["staging", "production", "fork"]) {
+    const cfg = shipped(n);
+    assert.doesNotThrow(() => validateConfig(cfg, { allowZeroReceiver: true }), n);
+    assert.equal(cfg.chainName, "arc-testnet");
+    assert.deepEqual(cfg.feeds, [{ ticker: "TSLA" }]);
+    assert.equal(cfg.receiver, ZERO);
+    assert.equal(cfg.forceSessionOpen, undefined);
+    assert.equal(cfg.quoteUrlTemplate, undefined);
   }
+});
+
+test("validateConfig rejects the zero receiver unless explicitly allowed (the workflow entry point never allows it)", () => {
+  const cfg = shipped("staging");
+  assert.throws(() => validateConfig(cfg), /zero address/);
+  assert.doesNotThrow(() => validateConfig({ ...cfg, receiver: "0x76c9cf548b4179F8901cda1f8623568b58215E62" }));
+  assert.throws(() => validateConfig({ ...cfg, receiver: "0x123" }, { allowZeroReceiver: true }));
+  assert.throws(() => validateConfig({ ...cfg, feeds: [] }, { allowZeroReceiver: true }));
+  assert.throws(() => validateConfig({ ...cfg, providers: ["bloomberg"] }, { allowZeroReceiver: true }));
+  assert.throws(() => validateConfig({ ...cfg, providers: [] }, { allowZeroReceiver: true }));
+  assert.throws(() => validateConfig({ ...cfg, providers: ["yahoo", "yahoo"] }, { allowZeroReceiver: true }));
+  assert.doesNotThrow(() => validateConfig({ ...cfg, providers: ["yahoo", "finnhub"], receiver: "0x76c9cf548b4179F8901cda1f8623568b58215E62" }));
 });
