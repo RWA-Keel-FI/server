@@ -1,0 +1,27 @@
+SPY ex-dividend dates (Yahoo): ['2024-12-20', '2025-03-21', '2025-06-20', '2025-09-19', '2025-12-19', '2026-03-20', '2026-06-18', '2026-09-18']
+
+week(Mon)   median pool-vs-SPY deviation (bps)   n_swaps
+2026-05-11      160      40 
+2026-07-06       96      32 
+2026-07-27       96    1818 
+2026-08-03       63     105 
+2026-08-10       82      32 
+2026-08-24       93      31 
+2026-08-31       54      57 
+2026-09-07       83      79 
+2026-09-14      100      41   <- ex-div week
+2026-09-21      132     350 
+2026-09-28       97     110 
+2026-10-05      111    1293 
+2026-10-12      106     115 
+2026-10-19       84      38 
+2026-10-26       92      62 
+2026-11-02       84      56 
+
+If the token accrued dividends via a share multiplier, the offset would step UP ~+27 bps at each ex-div week (SPY pays ~0.27%/qtr).
+Observed: a +32 bps blip in the week after the 2026-09-18 ex-div (100 -> 132, n=350) that REVERTS to 97-111 within two weeks; no persistent step.
+=> dividend/share-multiplier accrual does NOT explain the offset (it would persist and compound). Cause unidentified: a stable ~+85-110 bps premium, 3x the 30 bps fee band.
+   Tokens expose no sharesMultiplier()/multiplier() via eth_call (proxy ABI unknown), so this is an empirical test only. Weekly samples are thin (n=31..1818).
+
+Absurd pool prices (liquidity exhausted, sqrtPrice pinned at tick bound): 15; examples: [('2026-03-06', '5.52e-08'), ('2026-05-11', '3.4e+50'), ('2026-07-30', '3.4e+50'), ('2026-07-30', '2.94e-27'), ('2026-07-30', '3.4e+50')]
+=> these produced d ~ 1e50, fee = d/2 ~ 1e49, surcharge = fee*volume overflow in the first prototype. Fixed by DISLOC exclusion (|p/r-1|>25%) and F_MAX cap.

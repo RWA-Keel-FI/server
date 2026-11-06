@@ -1,0 +1,12 @@
+# Shared settings. Target names must match deviation-workflow/workflow.yaml.
+# Chain name verified in CRE Forwarder Directory: ethereum-testnet-sepolia-unichain-1 (needs CLI >= 1.5.0, TS SDK >= 1.3.0).
+# RPC URL: public Unichain Sepolia endpoint (eth_chainId returned 0x515 = 1301); swap for a dedicated RPC via ${VAR}.
+staging-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia-unichain-1
+      url: https://sepolia.unichain.org
+
+demo-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia-unichain-1
+      url: https://sepolia.unichain.org

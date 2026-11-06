@@ -1,0 +1,14 @@
+{
+  "schedule": "0 * * * * *",
+  "chainName": "ethereum-testnet-sepolia-unichain-1",
+  "receiver": "0x0000000000000000000000000000000000000000",
+  "gasLimit": "500000",
+  "provider": "yahoo",
+  "sessionMode": "extended",
+  "maxQuoteAgeSec": 315360000,
+  "closedHeartbeatMinutes": 30,
+  "onFetchFailure": "skip",
+  "feeds": [{ "ticker": "NVDA" }, { "ticker": "TSLA" }],
+  "forceSessionOpen": true,
+  "quoteUrlTemplate": "http://127.0.0.1:8787/{ticker}.json"
+}

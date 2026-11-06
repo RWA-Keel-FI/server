@@ -1,0 +1,17 @@
+# Targets must also exist in ../project.yaml (CLI merges both; workflow.yaml wins on conflicts).
+staging-settings:
+  user-workflow:
+    workflow-name: "deviationfee-refprice-staging"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.staging.json"
+    secrets-path: "../secrets.yaml"
+
+# DEMO ONLY: replays fixtures/*.json served on 127.0.0.1:8787 with the session forced open.
+demo-settings:
+  user-workflow:
+    workflow-name: "deviationfee-refprice-demo"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.demo.json"
+    secrets-path: "../secrets.yaml"
