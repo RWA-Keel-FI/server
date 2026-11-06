@@ -5,6 +5,10 @@ import json, os, re, sys, time
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))  # project root (deployments/ and contracts/ live there)
 log_path, rpc = sys.argv[1], sys.argv[2]
 start_block = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+# optional overrides for non-anvil targets (Arc): MANIFEST_NAME=arc-testnet.json, MANIFEST_NETWORK="...", EXPLORER=https://...
+MANIFEST_NAME = os.environ.get("MANIFEST_NAME", "local.json")
+MANIFEST_NETWORK = os.environ.get("MANIFEST_NETWORK")
+EXPLORER = os.environ.get("EXPLORER")
 
 dep, acct, tick, pools = {}, {}, {}, {}
 for raw in open(log_path, encoding="utf-8", errors="replace"):
@@ -49,7 +53,8 @@ for sym, t in tick.items():
 manifest = {
     "chainId": int(dep["chainId"]),
     "rpc": rpc,
-    "network": "local anvil (chain id 31337). TEST TOKENS ONLY: nothing here is a real stock, a real USDC, or has value.",
+    "network": MANIFEST_NETWORK or "local anvil (chain id 31337). TEST TOKENS ONLY: nothing here is a real stock, a real USDC, or has value.",
+    **({"explorer": EXPLORER} if EXPLORER else {}),
     "deployedAt": int(time.time()),
     "startBlock": start_block,
     "poolManager": dep["poolManager"], "oracle": dep["oracle"], "hook": dep["hook"], "forwarder": dep["forwarder"],
@@ -60,13 +65,14 @@ manifest = {
         "deployer": acct["deployer"],
         "lps": [acct["lp1"], acct["lp2"], acct["lp3"]],
         "arb": acct["arb"], "retail": acct["retail"],
-        "anvilIndex": {"deployer": 0, "lp1": 1, "lp2": 2, "lp3": 3, "arb": 4, "retail": 5},
-        "note": "keys are anvil's public defaults (never use them anywhere else)",
+        **({"anvilIndex": {"deployer": 0, "lp1": 1, "lp2": 2, "lp3": 3, "arb": 4, "retail": 5},
+            "note": "keys are anvil's public defaults (never use them anywhere else)"} if not MANIFEST_NETWORK else
+           {"note": "addresses only; no keys are stored in this manifest"}),
     },
     "lpRanges": {"lp1": "wide (full range)", "lp2": "medium (about +-10%)", "lp3": "tight (about +-2.4%)"},
     "tickers": tickers,
 }
-out = os.path.join(ROOT, "deployments", "local.json")
+out = os.path.join(ROOT, "deployments", MANIFEST_NAME)
 json.dump(manifest, open(out, "w"), indent=2)
 print("wrote", out)
 

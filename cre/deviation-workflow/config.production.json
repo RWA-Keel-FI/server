@@ -1,12 +1,18 @@
 {
   "schedule": "0 * * * * *",
   "chainName": "arc-testnet",
-  "receiver": "0x0000000000000000000000000000000000000000",
+  "receiver": "0x907782029126f5f583010b4B5877A351236FE8f5",
   "gasLimit": "500000",
-  "providers": ["yahoo"],
+  "providers": [
+    "yahoo"
+  ],
   "sessionMode": "extended",
   "maxQuoteAgeSec": 120,
   "closedHeartbeatMinutes": 0,
   "onFetchFailure": "skip",
-  "feeds": [{ "ticker": "TSLA" }]
+  "feeds": [
+    {
+      "ticker": "TSLA"
+    }
+  ]
 }
