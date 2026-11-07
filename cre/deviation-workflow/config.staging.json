@@ -13,6 +13,18 @@
   "feeds": [
     {
       "ticker": "TSLA"
+    },
+    {
+      "ticker": "NVDA"
+    },
+    {
+      "ticker": "AAPL"
+    },
+    {
+      "ticker": "GOOGL"
+    },
+    {
+      "ticker": "META"
     }
   ]
 }

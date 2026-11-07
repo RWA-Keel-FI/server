@@ -6,10 +6,12 @@
 #   production (KeystoneForwarder):     0x76c9cf548b4179F8901cda1f8623568b58215E62  (for deployed workflows)
 
 # `cre workflow simulate` against real Arc Testnet.
+# The free Circle endpoint (https://rpc.testnet.arc.io, also rpc.testnet.arc.network) answers HTTP 429 "rate limit exceeded" to the
+# simulator's burst of calls, so the simulation uses a provider endpoint from the Arc docs (drpc / blockdaemon work as well).
 staging-settings:
   rpcs:
     - chain-name: arc-testnet
-      url: https://rpc.testnet.arc.network
+      url: https://rpc.quicknode.testnet.arc.io
 
 # `cre workflow deploy` (the DON writes through the production KeystoneForwarder).
 production-settings:

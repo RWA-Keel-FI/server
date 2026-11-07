@@ -42,20 +42,22 @@ test("freshness guard", () => {
 const ZERO = "0x0000000000000000000000000000000000000000";
 const shipped = (n: string) => JSON.parse(readFileSync(new URL(`../config.${n}.json`, import.meta.url), "utf8"));
 
-test("shipped configs: arc-testnet, TSLA only, real providers only, receiver unset until set-receiver runs", () => {
+test("shipped configs: arc-testnet, known stock feeds only, real providers only, receiver is a real address", () => {
   for (const n of ["staging", "production", "fork"]) {
     const cfg = shipped(n);
-    assert.doesNotThrow(() => validateConfig(cfg, { allowZeroReceiver: true }), n);
+    // staging/production: set-receiver has written the deployed oracle, so strict validation passes. fork keeps the zero address
+    // until `set-receiver --fork` runs against a local fork.
+    assert.doesNotThrow(() => validateConfig(cfg, { allowZeroReceiver: n === "fork" }), n);
     assert.equal(cfg.chainName, "arc-testnet");
-    assert.deepEqual(cfg.feeds, [{ ticker: "TSLA" }]);
-    assert.equal(cfg.receiver, ZERO);
+    assert.deepEqual(cfg.feeds.map((f: { ticker: string }) => f.ticker), ["TSLA", "NVDA", "AAPL", "GOOGL", "META"]);
+    if (n !== "fork") assert.notEqual(cfg.receiver, ZERO);
     assert.equal(cfg.forceSessionOpen, undefined);
     assert.equal(cfg.quoteUrlTemplate, undefined);
   }
 });
 
 test("validateConfig rejects the zero receiver unless explicitly allowed (the workflow entry point never allows it)", () => {
-  const cfg = shipped("staging");
+  const cfg = { ...shipped("staging"), receiver: ZERO }; // the shipped file has a real receiver; force the zero case
   assert.throws(() => validateConfig(cfg), /zero address/);
   assert.doesNotThrow(() => validateConfig({ ...cfg, receiver: "0x76c9cf548b4179F8901cda1f8623568b58215E62" }));
   assert.throws(() => validateConfig({ ...cfg, receiver: "0x123" }, { allowZeroReceiver: true }));
