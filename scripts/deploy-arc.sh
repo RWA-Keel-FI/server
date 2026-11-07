@@ -57,7 +57,7 @@ echo "== 2/4 seed (oracle price, mint, liquidity)"; python3 "$S" seed
 echo "== 3/4 showcase swaps (normal vs arbitrage)"; python3 "$S" showcase
 echo "== 4/4 hand the oracle to the real Chainlink forwarder"; python3 "$S" handover
 
-MANIFEST_NAME="$MANIFEST" EXPLORER="https://explorer.testnet.arc.network" \
+MANIFEST_NAME="$MANIFEST" EXPLORER="https://explorer.testnet.arc.io" \
 MANIFEST_NETWORK="Arc Testnet (chain id 5042002)$([ "$MODE" = fork ] && echo ' [LOCAL FORK DRY RUN, not on chain]'). TEST TOKENS: tTSLA is a mock token, not a real stock." \
   python3 "$ROOT/server/scripts/build_manifest.py" "$LOG" "$([ "$MODE" = fork ] && echo http://127.0.0.1:${FORK_PORT:-8547} || echo "$ARC_RPC")" "$START_BLOCK"
 echo "final native(USDC) balance: $(cast balance "$DEPLOYER" --rpc-url "$RPC" --ether)"
