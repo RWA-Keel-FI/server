@@ -5,3 +5,7 @@ out.wasm
 binary.wasm
 out.js
 binary.wasm.br.b64
+
+# CRE CLI temporary build output
+.cre_build_tmp.js
+**/.cre_build_tmp.js

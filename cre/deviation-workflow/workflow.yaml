@@ -1,3 +1,5 @@
+# Secrets: the default price source (Yahoo) needs none, so secrets-path is left out. To use Finnhub, add it to `providers`,
+# export FINNHUB_API_KEY_ENV, and uncomment secrets-path in the target you run.
 # Targets must also exist in ../project.yaml (CLI merges both; workflow.yaml wins on conflicts).
 # All three targets use the same code; only receiver/RPC differ (see scripts/set-receiver.ts).
 staging-settings:
@@ -6,7 +8,7 @@ staging-settings:
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.staging.json"
-    secrets-path: "../secrets.yaml"
+    # secrets-path: "../secrets.yaml"   # only needed if "finnhub" is added to `providers`; the CLI requires every listed env var to exist
 
 production-settings:
   user-workflow:
@@ -17,7 +19,7 @@ production-settings:
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.production.json"
-    secrets-path: "../secrets.yaml"
+    # secrets-path: "../secrets.yaml"   # only needed if "finnhub" is added to `providers`; the CLI requires every listed env var to exist
 
 fork-settings:
   user-workflow:
@@ -25,4 +27,4 @@ fork-settings:
   workflow-artifacts:
     workflow-path: "./main.ts"
     config-path: "./config.fork.json"
-    secrets-path: "../secrets.yaml"
+    # secrets-path: "../secrets.yaml"   # only needed if "finnhub" is added to `providers`; the CLI requires every listed env var to exist

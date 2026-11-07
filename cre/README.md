@@ -31,6 +31,17 @@ Chain facts (checked against docs.chain.link/cre, Nov 2026): chain name `arc-tes
 The oracle trusts one forwarder at a time (`ReceiverTemplate.setForwarderAddress`, owner only). Deploy it with the mock forwarder
 to simulate; before `cre workflow deploy`, call `setForwarderAddress(0x76c9...E62)`.
 
+## Prerequisites and known failures
+
+- **Bun >= 1.2.21 is required** (the CRE SDK declares it). With an older Bun (1.2.16 was seen) the workflow compiles but `cre workflow simulate`
+  fails at start-up with `Failed to create engine: failed to execute subscribe ... wasm trap: wasm unreachable instruction executed`, even for
+  a one-line workflow. Check with `bun --version`, fix with `bun upgrade`.
+- **`environment variable FINNHUB_API_KEY_ENV for secret value not found`**: the CLI requires every env var named in `secrets.yaml` to exist.
+  The default setup (Yahoo) needs no secrets, so `secrets-path` is commented out in `deviation-workflow/workflow.yaml`. Only enable it
+  (and export `FINNHUB_API_KEY_ENV`) if you add `finnhub` to `providers`.
+- `CRE_ETH_PRIVATE_KEY` goes in `server/cre/.env` (not in `client/.env`). It must be 64 hex characters, without `0x`. A dry run works
+  without it (the CLI uses a default key and says so); `--broadcast` needs a key holding Arc Testnet USDC for gas.
+
 ## 0. Local checks (no account needed)
 
 ```bash
