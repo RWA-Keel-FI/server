@@ -20,7 +20,7 @@ A tokenized stock trades on a Uniswap pool all day, but the real stock only trad
 
 ## `cre/`: the price feed
 
-A Chainlink CRE workflow, target chain `arc-testnet`, feed `TSLA`:
+A Chainlink CRE workflow, target chain `arc-testnet`, feeds `TSLA`, `NVDA`, `AAPL`, `GOOGL` and `META`:
 
 ```
 cron (every minute) -> US session check (DON time) ->
@@ -87,6 +87,7 @@ parent/
 | `deploy-local.sh` | Deploy the whole demo to a local anvil: its own v4 PoolManager, plus a mock forwarder and mock USDC. |
 | `deploy-arc.sh fork` | Rehearse the full Arc flow on a local fork of Arc Testnet. Sends nothing to the real chain. |
 | `deploy-arc.sh real` | **Real broadcast** to Arc Testnet (chain 5042002). Needs `contracts/.env` with `DEPLOYER_PRIVATE_KEY`. |
+| `add-stocks-arc.sh fork\|real` | Add more stocks to the existing deployment (token, listing, two pools and liquidity per stock). Resumable and retry-safe: each transaction uses an explicit nonce. |
 | `arc_stages.py` | The seed, demo and handover steps, sent with `cast send` (see below). |
 | `build_manifest.py` | Turns the deploy log into `deployments/<name>.json` and copies the ABIs. |
 | `push-price.sh`, `smoke-local.sh` | Local helpers. |

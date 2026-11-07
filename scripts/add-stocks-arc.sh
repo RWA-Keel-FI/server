@@ -8,7 +8,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 MODE="${1:-}"; [ "$MODE" = fork ] || [ "$MODE" = real ] || { echo "usage: $0 fork|real [TICKERS]"; exit 2; }
 export TICKERS="${2:-NVDA,AAPL,GOOGL,META}"
-ARC_RPC="${ARC_RPC_URL:-https://rpc.testnet.arc.io}"
+# The free public RPCs rate-limit (HTTP 429). Pick the first official endpoint that answers a short burst, and retry every preflight read.
+retry() { local out i; for i in 1 2 3 4 5 6; do out="$("$@" 2>/dev/null)" && [ -n "$out" ] && { echo "$out"; return 0; }; sleep $((i * 2)); done; return 1; }
+healthy() { local u="$1" i; for i in 1 2 3 4 5; do [ "$(curl -s -m 8 -o /dev/null -w '%{http_code}' -X POST "$u" -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}')" = 200 ] || return 1; done; }
+pick_rpc() { local u; for u in "${ARC_RPC_URL:-}" https://rpc.testnet.arc.io https://rpc.drpc.testnet.arc.io https://rpc.quicknode.testnet.arc.io https://rpc.blockdaemon.testnet.arc.io https://rpc.testnet.arc.network; do [ -n "$u" ] && healthy "$u" && { echo "$u"; return 0; }; done; return 1; }
+ARC_RPC="$(pick_rpc)" || { echo "no healthy Arc RPC right now (all rate-limited or down); try again in a minute"; exit 1; }
+echo "using RPC $ARC_RPC"
 [ -f "$ROOT/contracts/.env" ] || { echo "missing contracts/.env"; exit 1; }
 set -a; . "$ROOT/contracts/.env"; set +a
 : "${DEPLOYER_PRIVATE_KEY:?DEPLOYER_PRIVATE_KEY is empty}"
@@ -17,11 +22,12 @@ DEPLOYER="$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")"
 
 FORK_PID=""; cleanup() { [ -n "$FORK_PID" ] && kill "$FORK_PID" 2>/dev/null || true; }; trap cleanup EXIT
 if [ "$MODE" = fork ]; then
-  RPC="http://127.0.0.1:${FORK_PORT:-8548}"; OUT="$ROOT/deployments/arc-fork.json"
-  anvil --fork-url "$ARC_RPC" --port "${FORK_PORT:-8548}" --silent > "$ROOT/deployments/.arc-fork-stocks.log" 2>&1 & FORK_PID=$!
+  FORK_PORT="${FORK_PORT:-$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')}"
+  RPC="http://127.0.0.1:${FORK_PORT}"; OUT="$ROOT/deployments/arc-fork.json"
+  anvil --fork-url "$ARC_RPC" --port "$FORK_PORT" --silent > "$ROOT/deployments/.arc-fork-stocks.log" 2>&1 & FORK_PID=$!
   for _ in $(seq 1 60); do [ "$(cast chain-id --rpc-url "$RPC" 2>/dev/null || true)" = 5042002 ] && break; sleep 1; done
   # DRY RUN ONLY: anvil lacks Arc's USDC precompiles, so a plain 6-decimal ERC-20 stands in for USDC with the deployer's real balance
-  BALUSDC="$(cast call 0x3600000000000000000000000000000000000000 'balanceOf(address)(uint256)' "$DEPLOYER" --rpc-url "$RPC" | cut -d' ' -f1)"
+  BALUSDC="$(retry cast call 0x3600000000000000000000000000000000000000 'balanceOf(address)(uint256)' "$DEPLOYER" --rpc-url "$RPC" | cut -d' ' -f1)"
   CODE="$(python3 -c "import json;print(json.load(open('$ROOT/contracts/out/MockUSDC.sol/MockUSDC.json'))['deployedBytecode']['object'])")"
   cast rpc anvil_setCode 0x3600000000000000000000000000000000000000 "$CODE" --rpc-url "$RPC" >/dev/null
   SLOT="$(cast keccak "$(cast abi-encode 'f(address,uint256)' "$DEPLOYER" 0)")"
@@ -29,11 +35,12 @@ if [ "$MODE" = fork ]; then
 else
   RPC="$ARC_RPC"; OUT="$BASE"
 fi
-[ "$(cast chain-id --rpc-url "$RPC")" = 5042002 ] || { echo "refusing: chain id is not 5042002"; exit 1; }
+[ "$(retry cast chain-id --rpc-url "$RPC")" = 5042002 ] || { echo "refusing: chain id is not 5042002 (or the RPC did not answer)"; exit 1; }
 J() { python3 -c "import json,sys;m=json.load(open('$BASE'));print($1)"; }
 export HOOK="$(J "m['hook']")" ISSUER="$(J "m['issuer']")" ORACLE="$(J "m['oracle']")" LIQ_ROUTER="$(J "m['liquidityRouter']")"
-echo "mode=$MODE deployer=$DEPLOYER USDC=$(cast balance "$DEPLOYER" --rpc-url "$RPC" --ether)  tickers=$TICKERS"
-[ "$(cast call "$HOOK" 'owner()(address)' --rpc-url "$RPC")" = "$DEPLOYER" ] || { echo "deployer does not own the hook"; exit 1; }
+echo "mode=$MODE deployer=$DEPLOYER USDC=$(retry cast balance "$DEPLOYER" --rpc-url "$RPC" --ether)  tickers=$TICKERS"
+OWNER="$(retry cast call "$HOOK" 'owner()(address)' --rpc-url "$RPC")" || { echo "could not read the hook owner (RPC rate limited); nothing was sent, try again"; exit 1; }
+[ "$OWNER" = "$DEPLOYER" ] || { echo "deployer does not own the hook (owner is $OWNER)"; exit 1; }
 
 IFS=',' read -ra SY <<< "$TICKERS"
 for s in "${SY[@]}"; do
@@ -42,11 +49,9 @@ for s in "${SY[@]}"; do
   export "PRICE_E8_$s=$px" "SIGMA_E12_$s=$sg"; echo "  $s priceE8=$px sigmaE12=$sg"
 done
 
-LOG="$ROOT/deployments/.add-stocks-$MODE.log"; export LOG
-echo "== 1/3 deploy tokens, list in issuer, create pools"
-( cd "$ROOT/contracts" && forge script script/AddStocksArc.s.sol:AddStocksArc --rpc-url "$RPC" --broadcast --slow --legacy -vv ) 2>&1 | tee "$LOG" | grep -E "Error|revert|ONCHAIN|FAIL|TICKER\|[A-Z]+\|token" || true
-grep -q "ONCHAIN EXECUTION COMPLETE" "$LOG" || { echo "pool creation failed; see $LOG"; exit 1; }
+export INFO="$ROOT/deployments/.add-stocks-$MODE.info.json"
 export RPC SENDER="$DEPLOYER" BASE_MANIFEST="$BASE" OUT_MANIFEST="$OUT"
+echo "== 1/3 tokens, listing, pools (cast send, resumable)"; python3 "$ROOT/server/scripts/arc_add_stocks.py" create
 echo "== 2/3 mint + liquidity (oracle temporarily handed to the deployer, then restored)"; python3 "$ROOT/server/scripts/arc_add_stocks.py" seed
 echo "== 3/3 manifest"; python3 "$ROOT/server/scripts/arc_add_stocks.py" merge
 echo "final USDC: $(cast balance "$DEPLOYER" --rpc-url "$RPC" --ether)"

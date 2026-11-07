@@ -10,6 +10,8 @@ simulation and the real chain executes the call.
   arc_stages.py showcase   fresh oracle write, then: retail swap (hook + control), a price-pushing swap, the arbitrage
                            swap back toward the reference. Writes deployments/<name>-showcase.json
   arc_stages.py handover   oracle.setForwarderAddress(real Chainlink KeystoneForwarder)
+  arc_stages.py refresh    DEMO-TIME REFRESH: make the deployer the temporary forwarder, write a fresh TSLA quote, hand the
+                           oracle back to the real forwarder. The price is then written by hand, not by CRE; say so when you demo.
 
 Env (exported by deploy-arc.sh): RPC, SENDER, DEPLOYER_PRIVATE_KEY (passed to `cast send --private-key`, so it is visible in
 the local process list for the duration of each call; never printed, error output is redacted),
@@ -207,5 +209,15 @@ def stage_handover():
     print(f"oracle forwarder is now the real Chainlink KeystoneForwarder {got}  tx={r['transactionHash']}")
 
 
+def stage_refresh():
+    current = call(ORACLE, "getForwarderAddress()(address)")
+    if current.lower() == FORWARDER.lower():
+        send(ORACLE, "setForwarderAddress(address)", SENDER)  # owner-only: the deployer owns the oracle
+    try:
+        push_price()
+    finally:
+        stage_handover()  # always give the oracle back to Chainlink, even if the write failed
+
+
 if __name__ == "__main__":
-    {"seed": stage_seed, "showcase": stage_showcase, "handover": stage_handover}[sys.argv[1]]()
+    {"seed": stage_seed, "showcase": stage_showcase, "handover": stage_handover, "refresh": stage_refresh}[sys.argv[1]]()
